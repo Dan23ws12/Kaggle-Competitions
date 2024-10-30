@@ -92,9 +92,19 @@ write.table(submit_pred, file = "rand_forest1.csv", sep = ",", dec = ".", row.na
 rand_forest_scaled <- randomForest(loan_status ~ ., data = train_scaled, 
                                    importance = TRUE)
 #saving results of scaled random Forest
-submit_scaled <- predict(rand_forest_scaled, 
-                         scale_and_join(submission, train_param$center, 
-                                        train_param$scale_), type = "prob")
+submission_scaled <- scale_and_join(submission, train_param$center, 
+                                    train_param$scale_)
+submit_scaled <- predict(rand_forest_scaled, submission_scaled, type = "prob")
 submit_scaled <- data.frame(id = sub_id, loan_status = submit_scaled)
 write.table(submit_scaled, file = "rand_forest_scaled.csv", sep = ",", 
+            dec = ".", row.names = FALSE)
+
+#training the reduced model
+rand_forest_reduced <- randomForest(loan_status ~ . -cb_person_default_on_file -cb_person_cred_hist_length
+                               ,data=train_scaled, importance=TRUE)
+importance(rand_forest_reduced)
+#saving results of reduced model
+submit_reduced <- predict(rand_forest_reduced, submission_scaled, type = "prob")
+submit_reduced <- data.frame(id = sub_id, loan_status = submit_reduced)
+write.table(submit_reduced, file = "rand_forest_reduced.csv", sep = ",", 
             dec = ".", row.names = FALSE)
