@@ -50,7 +50,7 @@ scale_and_join <- function(df, center_, deviation){
   numeric_vars <- c("person_income","person_emp_length","loan_amnt",
                     "loan_int_rate","cb_person_cred_hist_length")
   categorical_vars <- c("person_home_ownership","loan_intent","loan_grade",
-                        "cb_person_default_on_file", "loan_status")
+                        "cb_person_default_on_file")
   df_scaled <- data.frame(scale(df[, numeric_vars], 
                                    center = center_, scale = deviation))
   df_scaled <- cbind.data.frame(df_scaled, df[, categorical_vars])
@@ -58,19 +58,22 @@ scale_and_join <- function(df, center_, deviation){
 }
 train_param <- get_center_scale(train_data = train_df)
 train_scaled <- scale_and_join(train_df, train_param$center, train_param$scale_)
+train_scaled$loan_status <- train_df$loan_status
 test_scaled <- scale_and_join(test_df, train_param$center, train_param$scale_)
+test_scaled$loan_status <- test_df$loan_status
 
-x_train <- train_scaled %>% select(!c(loan_status))
-y_train <- train_scaled$loan_status
-x_test <- test_scaled %>% select(!c(loan_status))
-y_test <- test_scaled$loan_status
+x_train <- train_df %>% select(!c(loan_status))
+y_train <- train_df$loan_status
+x_test <- test_df %>% select(!c(loan_status))
+y_test <- test_df$loan_status
 
-#training the model
+#training the model on un-scaled data
 rand_forest_md <- randomForest(x=x_train, y=y_train, importance=TRUE)
+
 #plotting the number of trees vs error rate
 plot(rand_forest_md)
 #displaying variable importance
-importance(rand_forest_md, type=1)
+importance(rand_forest_md)
 #testing the model
 y_pred <- predict(rand_forest_md, x_test)
 #confusion matrix
@@ -84,3 +87,14 @@ submit_pred <- predict(rand_forest_md, submission, type = "prob")
 submit_pred <- data.frame(id = sub_id, loan_status = submit_pred)
 #set current working directory to submissions folder
 write.table(submit_pred, file = "rand_forest1.csv", sep = ",", dec = ".", row.names = FALSE)
+
+#scaling the data and running the model
+rand_forest_scaled <- randomForest(loan_status ~ ., data = train_scaled, 
+                                   importance = TRUE)
+#saving results of scaled random Forest
+submit_scaled <- predict(rand_forest_scaled, 
+                         scale_and_join(submission, train_param$center, 
+                                        train_param$scale_), type = "prob")
+submit_scaled <- data.frame(id = sub_id, loan_status = submit_scaled)
+write.table(submit_scaled, file = "rand_forest_scaled.csv", sep = ",", 
+            dec = ".", row.names = FALSE)
