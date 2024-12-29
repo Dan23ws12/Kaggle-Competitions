@@ -1,2 +1,5 @@
-*Original Data/
+*train.csv
 *.ipynb_checkpoints/
+*.env
+*test.csv
+*sample_submission.csv
